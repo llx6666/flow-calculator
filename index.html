@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流量计算器 - 线性 vs 平方</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #eef2f8 0%, #e0e6f0 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            /* 加宽 */
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 48px;
+            box-shadow: 0 30px 50px rgba(0, 10, 30, 0.2), inset 0 1px 3px rgba(255, 255, 255, 0.9);
+            padding: 36px 32px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #0b1a30;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .subtitle {
+            color: #2c405e;
+            font-size: 1rem;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(30, 60, 100, 0.15);
+            margin-bottom: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            background: #1e324b;
+            color: #b5ceff;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .formula-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .formula-box {
+            background: #d9e6f5;
+            padding: 16px 20px;
+            border-radius: 30px;
+            text-align: center;
+            font-weight: 500;
+            color: #11315a;
+            border: 1px solid #b7cef0;
+            box-shadow: inset 0 1px 5px #a1b9dd;
+            font-size: 1.1rem;
+        }
+
+        .formula-box.linear {
+            background: #d9e6f5;
+        }
+
+        .formula-box.square {
+            background: #ffe6cc;
+            border-color: #ffb347;
+        }
+
+        .formula-box .square-badge {
+            background: #ffb347;
+            color: #1e3a5f;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-weight: 700;
+            margin-left: 8px;
+            font-size: 0.9rem;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .input-item {
+            background: white;
+            border-radius: 28px;
+            padding: 10px 10px 10px 22px;
+            box-shadow: 0 8px 18px rgba(27, 45, 75, 0.12), inset 0 1px 3px #ffffff, inset 0 0 0 1px #c5d4ee;
+        }
+
+        .input-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #3d5a83;
+            margin-bottom: 6px;
+        }
+
+        .input-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-field input {
+            flex: 1;
+            border: none;
+            padding: 10px 6px 10px 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0f2340;
+            background: transparent;
+            outline: none;
+            width: 100%;
+        }
+
+        .input-field input::placeholder {
+            color: #aebfdb;
+            font-weight: 400;
+            font-size: 1rem;
+        }
+
+        .unit-tag {
+            background: #e2ebf9;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 700;
+            color: #1b3a62;
+            font-size: 1rem;
+            box-shadow: inset 0 1px 5px #adc2e0;
+        }
+
+        .info-panel {
+            background: #d1def5;
+            border-radius: 28px;
+            padding: 20px 24px;
+            margin: 25px 0 30px;
+            box-shadow: inset 0 2px 8px #b1c2de, 0 8px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #eef4fe;
+            padding: 8px 18px;
+            border-radius: 40px;
+        }
+
+        .info-item .label {
+            font-weight: 600;
+            color: #1c3453;
+        }
+
+        .info-item .value {
+            background: #283e60;
+            color: white;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .results-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .result-card {
+            border-radius: 32px;
+            padding: 24px;
+            box-shadow: 0 20px 28px -12px rgba(0, 0, 0, 0.7), inset 0 1px 2px #7f9bc2;
+        }
+
+        .result-card.linear-card {
+            background: linear-gradient(150deg, #142940, #0c1c32);
+        }
+
+        .result-card.square-card {
+            background: linear-gradient(150deg, #4a2e1e, #2d1e12);
+        }
+
+        .result-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #9eb7de;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .result-card.square-card .result-title {
+            color: #ffd966;
+        }
+
+        .result-title .formula {
+            background: #253c5c;
+            color: #caddff;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+        }
+
+        .result-card.square-card .result-title .formula {
+            background: #a5661b;
+            color: #fff2d0;
+        }
+
+        .result-value {
+            font-size: 2.3rem;
+            font-weight: 700;
+            color: white;
+            line-height: 1.2;
+            word-break: break-word;
+            text-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+        }
+
+        .result-desc {
+            color: #8da4cf;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .result-card.square-card .result-desc {
+            color: #ffd9a3;
+        }
+
+        .history-section {
+            background: #eaf0fb;
+            border-radius: 28px;
+            padding: 22px;
+            margin-top: 25px;
+            border: 1px solid white;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .history-header h3 {
+            color: #1d3657;
+            font-size: 1.2rem;
+        }
+
+        .clear-btn {
+            background: none;
+            border: 2px solid #4e6b91;
+            color: #2d4a73;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .clear-btn:hover {
+            background: #2d4a73;
+            border-color: #2d4a73;
+            color: white;
+        }
+
+        .history-list {
+            list-style: none;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .history-list li {
+            background: white;
+            border-radius: 40px;
+            padding: 12px 18px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #b6cbef;
+            box-shadow: 0 3px 8px #b1c4e3;
+        }
+
+        .history-list .hist-input {
+            color: #314f7a;
+            font-weight: 500;
+        }
+
+        .history-list .hist-result {
+            font-weight: 700;
+            color: #0a2345;
+            margin-left: 15px;
+        }
+
+        .history-list .linear-result {
+            color: #0a2345;
+        }
+
+        .history-list .square-result {
+            color: #b45f06;
+            margin-left: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #486185;
+            font-size: 0.9rem;
+            margin-top: 25px;
+            padding-top: 18px;
+            border-top: 2px dashed #b1c6e0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>
+                <span>📊 流量计算器</span>
+                <span
+                    style="font-size: 0.9rem; background: #ffffff50; padding: 5px 15px; border-radius: 40px; margin-left: auto;">线性
+                    vs 平方</span>
+            </h1>
+            <div class="subtitle">
+                <span>两个公式对比 (当前值, L, H)</span>
+                <span class="badge">系数 13107 + 3276</span>
+            </div>
+
+            <!-- 公式说明 -->
+            <div class="formula-row">
+                <div class="formula-box linear">
+                    📐 <strong>公式一 (线性)</strong> (当前值 - L) / (H - L) × 13107 + 3276
+                </div>
+                <div class="formula-box square">
+                    📊 <strong>公式二 (平方)</strong> [(当前值 - L) / (H - L)]² × 13107 + 3276
+                    <span class="square-badge">²</span>
+                </div>
+            </div>
+
+            <!-- 三个输入框 -->
+            <div class="input-grid">
+                <div class="input-item">
+                    <div class="input-label">📟 当前值</div>
+                    <div class="input-field">
+                        <input type="number" id="pvInput" value="5000" step="any">
+                        <span class="unit-tag" id="pvDisplay">5000</span>
+                    </div>
+                </div>
+                <div class="input-item">
+                    <div class="input-label">🔽 L值</div>
+                    <div class="input-field">
+                        <input type="number" id="lInput" value="4000" step="any">
+                        <span class="unit-tag" id="lDisplay">4000</span>
+                    </div>
+                </div>
+                <div class="input-item">
+                    <div class="input-label">🔼 H值</div>
+                    <div class="input-field">
+                        <input type="number" id="hInput" value="10000" step="any">
+                        <span class="unit-tag" id="hDisplay">10000</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中间计算信息 -->
+            <div class="info-panel">
+                <div class="info-row">
+                    <div class="info-item">
+                        <span class="label">H - L</span>
+                        <span class="value" id="rangeVal">6000</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">当前 - L</span>
+                        <span class="value" id="deltaVal">1000</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">归一化</span>
+                        <span class="value" id="normVal">0.1667</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">平方后</span>
+                        <span class="value" id="squaredVal">0.0278</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 两个结果卡片 (线性 vs 平方) -->
+            <div class="results-row">
+                <div class="result-card linear-card">
+                    <div class="result-title">
+                        <span>📐 公式一 (线性)</span>
+                        <span class="formula">无平方</span>
+                    </div>
+                    <div class="result-value" id="result1">13,110,276</div>
+                    <div class="result-desc" id="desc1">直接归一化 × 13107 + 3276</div>
+                </div>
+                <div class="result-card square-card">
+                    <div class="result-title">
+                        <span>📊 公式二 (平方)</span>
+                        <span class="formula">先平方<span
+                                style="background: #ffb347; color:#1e3a5f; padding:2px 8px; border-radius:20px; margin-left:5px;">²</span></span>
+                    </div>
+                    <div class="result-value" id="result2">3,641</div>
+                    <div class="result-desc" id="desc2">归一化后平方 × 13107 + 3276</div>
+                </div>
+            </div>
+
+            <!-- 历史记录 -->
+            <div class="history-section">
+                <div class="history-header">
+                    <h3>📋 计算历史 (双击卡片保存)</h3>
+                    <button class="clear-btn" id="clearHistoryBtn">清空记录</button>
+                </div>
+                <ul class="history-list" id="historyList">
+                    <li>
+                        <span class="hist-input">当前=5000 L=4000 H=10000</span>
+                        <span>
+                            <span class="hist-result linear-result">13,110,276</span>
+                            <span class="hist-result square-result">| 3,641</span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="footer">
+                ⚡ 实时计算 · 线性与平方对比 · 双击结果保存历史
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            // 获取元素
+            const pvInput = document.getElementById('pvInput');
+            const lInput = document.getElementById('lInput');
+            const hInput = document.getElementById('hInput');
+            const pvDisplay = document.getElementById('pvDisplay');
+            const lDisplay = document.getElementById('lDisplay');
+            const hDisplay = document.getElementById('hDisplay');
+            const rangeVal = document.getElementById('rangeVal');
+            const deltaVal = document.getElementById('deltaVal');
+            const normVal = document.getElementById('normVal');
+            const squaredVal = document.getElementById('squaredVal');
+            const result1 = document.getElementById('result1');
+            const result2 = document.getElementById('result2');
+            const desc1 = document.getElementById('desc1');
+            const desc2 = document.getElementById('desc2');
+            const historyList = document.getElementById('historyList');
+            const clearBtn = document.getElementById('clearHistoryBtn');
+
+            const MULT = 13107;
+            const ADD = 3276;
+
+            // 历史记录
+            let history = [];
+
+            // 加载历史
+            try {
+                const saved = localStorage.getItem('flowCalcHistory');
+                if (saved) {
+                    history = JSON.parse(saved);
+                } else {
+                    history = [{ pv: 5000, l: 4000, h: 10000, linear: '13,110,276', square: '3,641' }];
+                }
+            } catch (e) {
+                history = [{ pv: 5000, l: 4000, h: 10000, linear: '13,110,276', square: '3,641' }];
+            }
+
+            // 格式化数字
+            function formatNumber(num) {
+                if (isNaN(num) || !isFinite(num)) return '错误';
+                return num.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+            }
+
+            // 计算
+            function calculate() {
+                let pv = parseFloat(pvInput.value);
+                let l = parseFloat(lInput.value);
+                let h = parseFloat(hInput.value);
+
+                // 处理NaN
+                if (isNaN(pv)) pv = 0;
+                if (isNaN(l)) l = 0;
+                if (isNaN(h)) h = 1;
+
+                // 更新显示标签
+                pvDisplay.textContent = pv;
+                lDisplay.textContent = l;
+                hDisplay.textContent = h;
+
+                // 避免除零
+                if (h === l) {
+                    h = l + 1;
+                    hInput.value = h;
+                }
+
+                // 中间计算
+                const range = h - l;
+                const delta = pv - l;
+                const norm = delta / range;
+                const squared = norm * norm;  // 平方
+
+                rangeVal.textContent = formatNumber(range);
+                deltaVal.textContent = formatNumber(delta);
+                normVal.textContent = norm.toFixed(4);
+                squaredVal.textContent = squared.toFixed(4);
+
+                // 公式一 (线性): norm × MULT + ADD
+                const linearResult = norm * MULT + ADD;
+                // 公式二 (平方): squared × MULT + ADD
+                const squareResult = squared * MULT + ADD;
+
+                const linearFormatted = formatNumber(linearResult);
+                const squareFormatted = formatNumber(squareResult);
+
+                result1.textContent = linearFormatted;
+                result2.textContent = squareFormatted;
+
+                desc1.textContent = `线性: ${norm.toFixed(4)} × 13107 + 3276`;
+                desc2.textContent = `平方: ${squared.toFixed(4)} × 13107 + 3276`;
+
+                return { pv, l, h, linear: linearFormatted, square: squareFormatted };
+            }
+
+            // 渲染历史
+            function renderHistory() {
+                historyList.innerHTML = '';
+                if (history.length === 0) {
+                    historyList.innerHTML = '<li style="justify-content:center;">暂无历史记录</li>';
+                    return;
+                }
+                history.slice(0, 10).forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span class="hist-input">当前=${item.pv} L=${item.l} H=${item.h}</span> 
+                        <span>
+                            <span class="hist-result linear-result">${item.linear}</span>
+                            <span class="hist-result square-result"> | ${item.square}</span>
+                        </span>
+                    `;
+                    historyList.appendChild(li);
+                });
+            }
+
+            // 添加到历史
+            function addToHistory() {
+                let pv = parseFloat(pvInput.value);
+                let l = parseFloat(lInput.value);
+                let h = parseFloat(hInput.value);
+
+                if (isNaN(pv)) pv = 0;
+                if (isNaN(l)) l = 0;
+                if (isNaN(h)) h = 1;
+
+                const range = h - l;
+                const delta = pv - l;
+                const norm = range !== 0 ? delta / range : 0;
+                const squared = norm * norm;
+
+                const linearResult = norm * MULT + ADD;
+                const squareResult = squared * MULT + ADD;
+
+                const linearFormatted = formatNumber(linearResult);
+                const squareFormatted = formatNumber(squareResult);
+
+                history.unshift({
+                    pv, l, h,
+                    linear: linearFormatted,
+                    square: squareFormatted
+                });
+
+                if (history.length > 10) history.pop();
+
+                try {
+                    localStorage.setItem('flowCalcHistory', JSON.stringify(history));
+                } catch (e) { }
+                renderHistory();
+            }
+
+            // 清空历史
+            function clearHistory() {
+                history = [];
+                try {
+                    localStorage.removeItem('flowCalcHistory');
+                } catch (e) { }
+                renderHistory();
+            }
+
+            // 事件绑定
+            pvInput.addEventListener('input', calculate);
+            lInput.addEventListener('input', calculate);
+            hInput.addEventListener('input', calculate);
+
+            // 双击卡片保存历史
+            document.querySelectorAll('.result-card').forEach(card => {
+                card.addEventListener('dblclick', () => {
+                    addToHistory();
+                    card.style.transition = 'background 0.2s';
+                    if (card.classList.contains('linear-card')) {
+                        card.style.background = 'linear-gradient(150deg, #1e3a5a, #16344d)';
+                        setTimeout(() => {
+                            card.style.background = 'linear-gradient(150deg, #142940, #0c1c32)';
+                        }, 200);
+                    } else {
+                        card.style.background = 'linear-gradient(150deg, #6b4f2e, #3d2e1a)';
+                        setTimeout(() => {
+                            card.style.background = 'linear-gradient(150deg, #4a2e1e, #2d1e12)';
+                        }, 200);
+                    }
+                });
+            });
+
+            // 回车保存历史
+            [pvInput, lInput, hInput].forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addToHistory();
+                    }
+                });
+            });
+
+            clearBtn.addEventListener('click', clearHistory);
+
+            // 初始化
+            calculate();
+            renderHistory();
+
+            // 防除零
+            hInput.addEventListener('blur', () => {
+                let h = parseFloat(hInput.value);
+                let l = parseFloat(lInput.value);
+                if (h === l) {
+                    alert('H和L不能相等，已调整为H = L + 1');
+                    hInput.value = l + 1;
+                    calculate();
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
